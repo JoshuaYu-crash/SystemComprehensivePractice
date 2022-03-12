@@ -52,13 +52,14 @@ parser MyParser(packet_in packet,
                 inout standard_metadata_t standard_metadata) {
 
     state start {
-        transition parse_ethernet;
+        /* TODO: add parser logic */
+        transition parse_eth; // 处理以太网报文头
     }
 
-    state parse_ethernet {
+    state parse_eth {
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
-            TYPE_IPV4: parse_ipv4;
+            TYPE_IPV4: parse_ipv4; // 如果为IPv4则需要再提取IPv4报文头
             default: accept;
         }
     }
@@ -67,14 +68,14 @@ parser MyParser(packet_in packet,
         packet.extract(hdr.ipv4);
         transition accept;
     }
-
 }
+
 
 /*************************************************************************
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply {  }
 }
 
@@ -89,17 +90,21 @@ control MyIngress(inout headers hdr,
     action drop() {
         mark_to_drop(standard_metadata);
     }
-    
+
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
-        standard_metadata.egress_spec = port;
+        /* TODO: fill out code in action body */
+        // 源地址改为目的地址，目的地址修改为控制面下发的目的地址
+        // 出口修改为目的主机对应交换机的出口
+        // ttl-1
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        standard_metadata.egress_spec = port;
     }
-    
+
     table ipv4_lpm {
         key = {
-            hdr.ipv4.dstAddr: lpm;
+            hdr.ipv4.dstAddr: lpm; // 最长前缀匹配
         }
         actions = {
             ipv4_forward;
@@ -107,11 +112,15 @@ control MyIngress(inout headers hdr,
             NoAction;
         }
         size = 1024;
-        default_action = drop();
+        default_action = NoAction();
     }
-    
+
     apply {
-        if (hdr.ipv4.isValid()) {
+        /* TODO: fix ingress control logic
+         *  - ipv4_lpm should be applied only when IPv4 header is valid
+         */
+        // 如果IPv4类型存在则进行IPv4转发
+        if(hdr.ethernet.etherType == TYPE_IPV4) {
             ipv4_lpm.apply();
         }
     }
@@ -131,12 +140,12 @@ control MyEgress(inout headers hdr,
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
-	update_checksum(
-	    hdr.ipv4.isValid(),
+        update_checksum(
+            hdr.ipv4.isValid(),
             { hdr.ipv4.version,
-	      hdr.ipv4.ihl,
+              hdr.ipv4.ihl,
               hdr.ipv4.diffserv,
               hdr.ipv4.totalLen,
               hdr.ipv4.identification,
@@ -151,12 +160,15 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
     }
 }
 
+
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
+        /* TODO: add deparser logic */
+        // 重组数据包头
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
     }

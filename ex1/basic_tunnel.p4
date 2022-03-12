@@ -69,8 +69,8 @@ parser MyParser(packet_in packet,
     state parse_ethernet {
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
-            TYPE_IPV4: parse_ipv4;
-            TYPE_MYTUNNEL: parse_tunnel;
+            TYPE_IPV4: parse_ipv4;       // 直接处理IPv4报文头
+            TYPE_MYTUNNEL: parse_tunnel; // 处理隧道报文头
             default: accept;
         }
     }
@@ -78,7 +78,7 @@ parser MyParser(packet_in packet,
     state parse_tunnel {
         packet.extract(hdr.myTunnel);
         transition select(hdr.myTunnel.proto_id) {
-            TYPE_IPV4: parse_ipv4;
+            TYPE_IPV4: parse_ipv4;       // 上层协议若为IPv4则需继续处理
             default: accept;
         }
     }
@@ -132,6 +132,7 @@ control MyIngress(inout headers hdr,
 
     // TODO: declare a new action: myTunnel_forward(egressSpec_t port)
     action myTunnel_forward(egressSpec_t port) {
+        // 修改报文出口为控制面下发的出口
         standard_metadata.egress_spec = port;
     }
 
@@ -147,14 +148,14 @@ control MyIngress(inout headers hdr,
         size = 1024;
         default_action = drop();
     }
-    // TODO: also remember to add table entries!
-
 
     apply {
         // TODO: Update control flow
+        // 如果隧道报文存在则隧道转发
         if (hdr.myTunnel.isValid()) {
             myTunnel_exact.apply();
         }
+        // 如果隧道不存在，倒是IPv4报文头存在，则进行IPv4转发
         else if (!hdr.myTunnel.isValid() && hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
         }
@@ -203,6 +204,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         // TODO: emit myTunnel header as well
+        // 发送隧道报文头
         packet.emit(hdr.myTunnel);
         packet.emit(hdr.ipv4);
     }
