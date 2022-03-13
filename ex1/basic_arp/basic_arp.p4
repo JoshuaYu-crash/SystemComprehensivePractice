@@ -145,7 +145,7 @@ control MyIngress(
         default_action = NoAction();
     }
 
-    action send_arp_reply(macAddr_t macAddr) {
+    action send_arp_reply(macAddr_t macAddr, ip4Addr_t IPAddr) {
         hdr.ethernet.dstAddr = hdr.arp.sendMACAddr;
         hdr.ethernet.srcAddr = macAddr;
         // 设置ARP报文类型为回应类型
@@ -154,7 +154,7 @@ control MyIngress(
         hdr.arp.targetMACAddr  = hdr.arp.sendMACAddr;
         hdr.arp.targetIPAddr   = hdr.arp.sendIPAddr;
         hdr.arp.sendMACAddr    = macAddr;
-        hdr.arp.sendIPAddr     = meta.dst_ipv4;
+        hdr.arp.sendIPAddr     = IPAddr;
         // 从入端口转发出去
         standard_metadata.egress_spec = standard_metadata.ingress_port;
     }
@@ -162,6 +162,7 @@ control MyIngress(
     table arp_ternary {
         key = {
             hdr.arp.oper : exact;
+            hdr.arp.targetIPAddr : lpm;
         }
         actions = {
             send_arp_reply;
@@ -231,6 +232,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ethernet);
         // 发送ARP数据包头
         packet.emit(hdr.arp);
+        // 发送IP数据包头
         packet.emit(hdr.ipv4);
     }
 }
@@ -240,10 +242,10 @@ control MyDeparser(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-MyParser(),
-MyVerifyChecksum(),
-MyIngress(),
-MyEgress(),
-MyComputeChecksum(),
-MyDeparser()
+    MyParser(),
+    MyVerifyChecksum(),
+    MyIngress(),
+    MyEgress(),
+    MyComputeChecksum(),
+    MyDeparser()
 ) main;
