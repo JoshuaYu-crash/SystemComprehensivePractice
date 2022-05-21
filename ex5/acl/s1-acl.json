@@ -56,7 +56,15 @@
       {
         "table": "MyIngress.acl",
         "match": {
-          "hdr.udp.dstPort": [80, 65535],
+          "hdr.udp.dstPort": [80, 65535]
+        },
+        "action_name": "MyIngress.drop",
+        "action_params": {},
+        "priority": 1
+      },
+      {
+        "table": "MyIngress.acl",
+        "match": {
           "hdr.ipv4.dstAddr": ["10.0.1.4", 4294967295]
         },
         "action_name": "MyIngress.drop",
