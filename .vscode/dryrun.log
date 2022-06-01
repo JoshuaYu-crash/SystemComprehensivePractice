@@ -1,0 +1,6 @@
+make.exe --dry-run --always-make --keep-going --print-directory
+make.exe: Entering directory 'd:/Desktop/������/ϵͳ�ۺ�ʵ��/SystemComprehensivePractice'
+make.exe: Leaving directory 'd:/Desktop/������/ϵͳ�ۺ�ʵ��/SystemComprehensivePractice'
+ 
+make.exe: *** No targets specified and no makefile found.  Stop.
+
